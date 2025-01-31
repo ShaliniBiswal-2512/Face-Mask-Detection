@@ -15,6 +15,121 @@ train_dir = r"C:\Users\KIIT\Desktop\AP(L)\Face Mask Detection\face-mask-dataset\
 test_dir = r"C:\Users\KIIT\Desktop\AP(L)\Face Mask Detection\face-mask-dataset\Dataset\test\test"
 categories = ["with_mask", "without_mask"]
 data = []
+import os
+import cv2
+import numpy as np
+import tensorflow as tf
+from flask import Flask, render_template, Response
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+
+app = Flask(__name__)
+
+# Define and train the face mask detection model
+def train_model():
+    data_gen = ImageDataGenerator(rescale=1./255, validation_split=0.2)
+    train_data = data_gen.flow_from_directory("dataset", target_size=(128, 128), batch_size=32, class_mode="binary", subset='training')
+    val_data = data_gen.flow_from_directory("dataset", target_size=(128, 128), batch_size=32, class_mode="binary", subset='validation')
+
+    model = Sequential([
+        Conv2D(32, (3, 3), activation='relu', input_shape=(128, 128, 3)),
+        MaxPooling2D(2, 2),
+        Conv2D(64, (3, 3), activation='relu'),
+        MaxPooling2D(2, 2),
+        Flatten(),
+        Dense(128, activation='relu'),
+        Dropout(0.5),
+        Dense(1, activation='sigmoid')
+    ])
+
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    model.fit(train_data, validation_data=val_data, epochs=10)
+    model.save("face_mask_detector.h5")
+    return model
+
+# Load the trained model
+try:
+    model = tf.keras.models.load_model("face_mask_detector.h5")
+    print("Model loaded successfully.")
+except Exception as e:
+    print("Error loading model:", e)
+    print("Training a new model...")
+    model = train_model()
+
+categories = ["with_mask", "without_mask"]
+
+# Load OpenCV's deep learning face detector (SSD + MobileNetV2)
+prototxt_path = "deploy.prototxt"
+caffemodel_path = "res10_300x300_ssd_iter_140000.caffemodel"
+face_net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
+
+def generate_frames():
+    cap = cv2.VideoCapture(0)
+    
+    if not cap.isOpened():
+        print("Error: Could not access the camera.")
+        return
+
+    while True:
+        success, frame = cap.read()
+        if not success:
+            print("Error: Failed to capture frame.")
+            break
+
+        h, w = frame.shape[:2]
+        blob = cv2.dnn.blobFromImage(frame, 1.0, (300, 300), (104.0, 177.0, 123.0))
+        face_net.setInput(blob)
+        detections = face_net.forward()
+
+        for i in range(detections.shape[2]):
+            confidence = detections[0, 0, i, 2]
+            if confidence > 0.5:
+                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+                (x, y, x_max, y_max) = box.astype("int")
+                
+                face = frame[y:y_max, x:x_max]
+                if face.shape[0] == 0 or face.shape[1] == 0:
+                    continue
+                
+                face = cv2.resize(face, (128, 128))
+                face = face.astype("float32") / 255.0
+                face = np.expand_dims(face, axis=0)
+
+                if model:
+                    prediction = model.predict(face, verbose=0)
+                    label_index = np.argmax(prediction)
+                    label_text = f"{categories[label_index]} ({prediction[0][label_index] * 100:.2f}%)"
+                    color = (0, 255, 0) if label_index == 0 else (0, 0, 255)
+                else:
+                    label_text = "Model not loaded"
+                    color = (0, 0, 255)
+                
+                cv2.putText(frame, label_text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+                cv2.rectangle(frame, (x, y), (x_max, y_max), color, 2)
+
+        ret, buffer = cv2.imencode('.jpg', frame)
+        if not ret:
+            print("Error: Failed to encode frame.")
+            break
+
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+
+    cap.release()
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/video_feed')
+def video_feed():
+    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+if __name__ == "__main__":
+    app.run(debug=True, host='127.0.0.1', port=5000)
 
 # Improved dataset loading and ensuring balance
 for category in categories:
