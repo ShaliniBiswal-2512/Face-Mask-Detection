@@ -1,19 +1,19 @@
-**Face Mask Detection using CNN and DNN 🧑‍⚖️🤖**
-
-- This project implements a real-time face mask detection system using deep learning techniques. The solution combines Convolutional Neural Networks (CNN) for face mask classification with Deep Neural Networks (DNN) for face detection.
+**Face Mask Detection using CNN and DNN** 🧑‍⚖️🤖
+This project implements a real-time face mask detection system using Flask, OpenCV, and TensorFlow. It combines Convolutional Neural Networks (CNN) for mask classification and Deep Neural Networks (DNN) for face detection.
 
 **Key Components:**
-- Face Detection with DNN 👀: The face detection is achieved using OpenCV's DNN module, which loads a pre-trained model based on the Caffe framework. This model detects faces in video frames with high accuracy and identifies regions of interest (ROIs) where the faces are located.
+Face Detection with DNN 👀: The face detection is performed using OpenCV's DNN module, which loads a pre-trained Caffe model (res10_300x300_ssd_iter_140000.caffemodel). It detects faces in video frames captured from the webcam.
 
-- Face Mask Classification with CNN 😷: After detecting faces, the regions are passed through a CNN model trained to classify whether the person is wearing a mask or not. The CNN architecture consists of several convolutional layers to extract features from the image and fully connected layers for classification.
+_**Face Mask Classification with CNN 😷:**_ After detecting faces, the image regions are passed through a CNN model trained to classify whether the person is wearing a mask or not. The CNN architecture uses convolutional layers for feature extraction and a fully connected layer for classification.
 
-Model Training 📚: The CNN model is trained on a custom dataset containing images labeled with "with_mask" and "without_mask" categories. The model uses ReLU activation functions in the hidden layers and Softmax in the output layer for multi-class classification. The model is trained with data augmentation to increase its robustness against variations in images.
+_Model Training 📚:_ The model is trained on a custom dataset containing "with_mask" and "without_mask" categories. The CNN architecture uses ReLU activation in hidden layers and sigmoid activation in the output layer for binary classification. The model is saved as face_mask_detector.h5.
 
-Real-time Detection ⏱️: The system can detect faces and predict whether the individual is wearing a mask in real-time using webcam input. The detected faces are highlighted with bounding boxes, and the mask status is displayed with green (mask ✅) or red (no mask ❌).
+_Real-time Detection ⏱️:_ The system detects faces and predicts the mask status in real-time using webcam input. Detected faces are highlighted with bounding boxes, and the mask status is displayed (green ✅ for mask, red ❌ for no mask).
 
 **Technologies Used:**
 - Python 🐍 and TensorFlow for deep learning model development.
+- Flask for building the web application.
 - OpenCV for face detection and real-time video processing.
 - Keras for CNN model architecture.
-- NumPy and Pandas for data manipulation and preprocessing.
+- NumPy for data manipulation.
 - Caffe pre-trained model for face detection via DNN.
